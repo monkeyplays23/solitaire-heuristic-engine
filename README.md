@@ -56,6 +56,7 @@ Core Concepts:
 
 Repository Structure:
 ---------------------
+```
 solitaire-heuristic-engine/
 │
 ├── README.md
@@ -85,7 +86,7 @@ solitaire-heuristic-engine/
 └── experiments/
     ├── results/
     └── notebooks/
-
+```
 Running an Experiment:
 ----------------------
 python -m src.cli.run_experiment --games 10000 --policy baseline
@@ -174,7 +175,7 @@ efficiency emerges from respecting the identity of state.
 Architecture Diagram:
 ---------------------
 Below is a high‑level view of the system’s flow and module boundaries:
-
+```
                    +---------------------------+
                    |     Heuristic Policy      |
                    |  (decision rules / moves) |
@@ -200,6 +201,7 @@ Below is a high‑level view of the system’s flow and module boundaries:
                        |  (win rate, moves, |
                        |   convergence)     |
                        +--------------------+
+```
 
 Future Work:
 ------------
