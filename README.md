@@ -161,7 +161,7 @@ The Solitaire domain provides a compact, well‑bounded environment to demonstra
 
 By evaluating heuristics only on unique initial deals, the engine becomes a tool for:
 
-* measuring heuristic strength
+* measuring heuristic strength:
   Heuristic strength is defined as the proportion of unique initial deals a policy successfully solves, combined with
   the efficiency and stability of those solutions across a deduplicated Monte Carlo sample of the Klondike state‑space.
 
@@ -183,13 +183,13 @@ Below is a high‑level view of the system’s flow and module boundaries:
                                  |
                                  v
 +-------------------+     +------+-------+     +---------------------+
-|   Deal Generator   +---->  Canonical   +----->  Deduplication Set  |
-|  (random shuffle)  |     |  Hashing    |     |  (seen deal hashes) |
+|   Deal Generator  +---->| Canonical    +---->|  Deduplication Set  |
+|  (random shuffle) |     |  Hashing     |     |  (seen deal hashes) |
 +-------------------+     +------+-------+     +----------+----------+
                                  |                         |
                                  | new deal                | duplicate
                                  v                         |
-                       +---------+---------+               |
+                       +---------+----------+              |
                        |     Simulator      |<-------------+
                        | (apply moves until |
                        |   win or stop)     |
@@ -252,4 +252,5 @@ If you use or reference this project in your own work, please include a link bac
 
 **Samuel A. Murrah — Solitaire Heuristic Evaluation Engine**
 
-Attribution is not required for personal experimentation, but it is appreciated in academic, professional, or published contexts.
+Attribution is not required for personal experimentation, but it is appreciated in academic,
+professional, or published contexts.
