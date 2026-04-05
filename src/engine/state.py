@@ -30,8 +30,8 @@ class Deal:
 
 class GameState:
     """
-    Represents a full Klondike game state, including tableau, stock, waste, and foundations. Provides legal move
-    generation and state transition helpers.
+    Represents a full Klondike game state, including tableau, stock, waste, and
+    foundations. Provides legal move generation and state transition helpers.
     """
     def __init__(self, deal: Deal):
         self.tableau = deal.tableau
@@ -41,7 +41,8 @@ class GameState:
 
     def legal_moves(self):
         """
-        Returns a list of legal moves from the current state. A move is an opaque object defined later.
+        Returns a list of legal moves from the current state. A move is an
+         opaque object defined later.
         """
         return []
 

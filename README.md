@@ -238,3 +238,18 @@ The engine is optimized around:
 
 As heuristics become more sophisticated, the simulator and hashing layers can be independently optimized without
 affecting the overall architecture.
+
+## License
+
+This project is released under the MIT License.
+You are free to use, modify, and distribute the code, provided that proper attribution is maintained.
+
+See the full license text in the `LICENSE` file.
+
+## Attribution
+
+If you use or reference this project in your own work, please include a link back to the repository and credit:
+
+**Samuel A. Murrah — Solitaire Heuristic Evaluation Engine**
+
+Attribution is not required for personal experimentation, but it is appreciated in academic, professional, or published contexts.
