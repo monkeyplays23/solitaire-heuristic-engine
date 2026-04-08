@@ -186,11 +186,11 @@ Below is a high‑level view of the system’s flow and module boundaries:
 |   Deal Generator  +---->| Canonical    +---->|  Deduplication Set  |
 |  (random shuffle) |     |  Hashing     |     |  (seen deal hashes) |
 +-------------------+     +------+-------+     +----------+----------+
-                                 |                         |
-                                 | new deal                | duplicate
-                                 v                         |
-                       +---------+----------+              |
-                       |     Simulator      |<-------------+
+                                 |                        |
+                                 | new deal               | duplicate
+                                 v                        |
+                       +---------+----------+             |
+                       |     Simulator      |<------------+
                        | (apply moves until |
                        |   win or stop)     |
                        +---------+----------+
