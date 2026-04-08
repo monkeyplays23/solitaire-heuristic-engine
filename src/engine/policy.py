@@ -37,6 +37,18 @@ class Policy:
         """
         raise NotImplementedError("Policy.choose must be implemented.")
 
+    # -------------------------------------------------------------
+    # Added to satisfy test_policy_handles_empty_moves
+    # -------------------------------------------------------------
+    def choose_move(self, state: State, moves: List[Move]) -> Move:
+        """
+        Public API expected by tests and MonteCarlo.
+        Delegates to choose().
+        """
+        if not moves:
+            return None
+        return self.choose(state, moves)
+
 
 # ---------------------------------------------------------------------
 # Random Policy (baseline)

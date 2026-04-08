@@ -62,11 +62,12 @@ class MonteCarlo:
     - deduplicate: whether to avoid revisiting identical states
     """
 
-    simulator: Simulator
-    policy: object  # Will be refined once policy.py is implemented
+    simulator: Simulator = field(default_factory=Simulator)
+    policy: object = None
     hasher: StateHasher = field(default_factory=StateHasher)
     max_depth: int = 200
     deduplicate: bool = True
+    rollouts: int = 100
 
     # Internal state
     visited: Dict[str, int] = field(default_factory=dict)
@@ -75,13 +76,14 @@ class MonteCarlo:
     # Public API
     # --------------------------------------------------------
 
-    def run(self, initial_state: State, rollouts: int = 1000) -> MCStats:
+    def run(self, initial_state: State, rollouts: int = None) -> MCStats:
         """
         Run N Monte Carlo rollouts from the given initial state.
         """
         stats = MCStats()
+        n = rollouts if rollouts is not None else self.rollouts
 
-        for _ in range(rollouts):
+        for _ in range(n):
             stats.rollouts += 1
             result = self._rollout(initial_state)
 
@@ -93,7 +95,7 @@ class MonteCarlo:
         stats.visited_states = sum(self.visited.values())
         stats.unique_states = len(self.visited)
 
-        return stats
+        return stats.as_dict()
 
     # --------------------------------------------------------
     # Rollout Logic
@@ -107,7 +109,7 @@ class MonteCarlo:
         """
         state = root.copy()
 
-        for depth in range(self.max_depth):
+        for _ in range(self.max_depth):
 
             # Deduplication
             if self.deduplicate:

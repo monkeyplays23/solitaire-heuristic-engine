@@ -10,6 +10,7 @@ This module contains no heuristic logic; it is purely mechanical.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import random
 
 
 # ---------------------------------------------------------------------
@@ -20,6 +21,7 @@ from dataclasses import dataclass
 class Card:
     rank: int  # 1-13 for Ace-King
     suit: str  # '♠', '♥', '♦', '♣'
+    face_up: bool = True
 
     @property
     def color(self) -> str:
@@ -52,23 +54,15 @@ class State:
         self.foundations = deal.foundations
 
     @classmethod
-    def new_game(cls, seed: int | None = None) -> "State":
-        """
-        Create a new deterministic starting state.
+    def new_game(cls, seed=None):
+        rng = random.Random(seed)
 
-        Placeholder: returns empty tableau/stock/waste/foundations.
-        """
-        import random
-        if seed is not None:
-            random.seed(seed)
+        tableau = [[] for _ in range(7)]
+        stock = [Card(rank=rng.randint(1, 13), suit="♠", face_up=True)]
+        waste = []
+        foundations = {"♠": [], "♥": [], "♦": [], "♣": []}
 
-        deal = Deal(
-            tableau=[[] for _ in range(7)],
-            stock=[],
-            waste=[],
-            foundations={"♠": [], "♥": [], "♦": [], "♣": []},
-        )
-        return cls(deal)
+        return cls(Deal(tableau, stock, waste, foundations))
 
     def copy(self) -> "State":
         """
