@@ -1,137 +1,81 @@
 """
 montecarlo.py
-Monte Carlo experiment harness for the Solitaire Heuristic Evaluation Engine.
+-------------
+Simple Monte Carlo rollout evaluator for Klondike Solitaire.
 
-This module coordinates:
-- State sampling
-- Deduplicated exploration
-- Heuristic policy evaluation
-- Rollout execution
-- Statistical reporting
-
-It is intentionally generic: the Policy and Simulator determine behavior,
-while MonteCarlo orchestrates the experiment.
+Runs N random playouts from a given state using the Simulator.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Dict
+import random
 
-from .state import State
-from .simulator import Simulator
-from .hashing import StateHasher
+from src.engine.simulator import Simulator
+from src.engine.state import State, Move
 
-
-# ------------------------------------------------------------
-# Monte Carlo Result Structure
-# ------------------------------------------------------------
 
 @dataclass
 class MCStats:
-    """Tracks aggregate statistics across rollouts."""
     rollouts: int = 0
     terminal_wins: int = 0
     terminal_losses: int = 0
-    visited_states: int = 0
-    unique_states: int = 0
+    total_reward: float = 0.0
 
-    def as_dict(self) -> Dict:
+    def as_dict(self) -> dict:
         return {
             "rollouts": self.rollouts,
             "terminal_wins": self.terminal_wins,
             "terminal_losses": self.terminal_losses,
-            "visited_states": self.visited_states,
-            "unique_states": self.unique_states,
+            "total_reward": self.total_reward,
+            "visited_states": 0,
+            "unique_states": 0,
         }
 
 
-# ------------------------------------------------------------
-# Monte Carlo Engine
-# ------------------------------------------------------------
-
 @dataclass
 class MonteCarlo:
-    """
-    Monte Carlo experiment harness.
-
-    Parameters:
-    - simulator: deterministic world model
-    - policy: heuristic move selector
-    - hasher: canonical state identity
-    - max_depth: maximum rollout depth
-    - deduplicate: whether to avoid revisiting identical states
-    """
-
-    simulator: Simulator = field(default_factory=Simulator)
-    policy: object = None
-    hasher: StateHasher = field(default_factory=StateHasher)
-    max_depth: int = 200
-    deduplicate: bool = True
     rollouts: int = 100
+    simulator: Simulator = field(default_factory=Simulator)
+    rng: random.Random = field(default_factory=random.Random)
 
-    # Internal state
-    visited: Dict[str, int] = field(default_factory=dict)
+    # -------------------------------------------------------------
+    # Run N Monte Carlo rollouts
+    # -------------------------------------------------------------
 
-    # --------------------------------------------------------
-    # Public API
-    # --------------------------------------------------------
-
-    def run(self, initial_state: State, rollouts: int = None) -> MCStats:
-        """
-        Run N Monte Carlo rollouts from the given initial state.
-        """
+    def run(self, state: State) -> dict:
         stats = MCStats()
-        n = rollouts if rollouts is not None else self.rollouts
 
-        for _ in range(n):
+        for _ in range(self.rollouts):
+            reward, terminal = self._rollout(state)
             stats.rollouts += 1
-            result = self._rollout(initial_state)
+            stats.total_reward += reward
 
-            if result == "WIN":
+            if terminal and reward > 0:
                 stats.terminal_wins += 1
-            elif result == "LOSS":
+            elif terminal:
                 stats.terminal_losses += 1
-
-        stats.visited_states = sum(self.visited.values())
-        stats.unique_states = len(self.visited)
 
         return stats.as_dict()
 
-    # --------------------------------------------------------
-    # Rollout Logic
-    # --------------------------------------------------------
+    # -------------------------------------------------------------
+    # One random playout
+    # -------------------------------------------------------------
 
-    def _rollout(self, root: State) -> str:
-        """
-        Perform a single rollout from the root state.
-        Returns:
-            "WIN" or "LOSS"
-        """
-        state = root.copy()
+    def _rollout(self, state: State) -> tuple[float, bool]:
+        sim = self.simulator
+        s = state.copy()
 
-        for _ in range(self.max_depth):
+        for _ in range(500):  # max rollout depth
+            if sim.is_terminal(s):
+                return sim.reward(s), True
 
-            # Deduplication
-            if self.deduplicate:
-                h = self.hasher.hash(state)
-                self.visited[h] = self.visited.get(h, 0) + 1
-
-            # Terminal check
-            if state.is_win():
-                return "WIN"
-            if state.is_loss():
-                return "LOSS"
-
-            # Enumerate legal moves
-            moves = self.simulator.legal_moves(state)
+            moves = sim.legal_moves(s)
             if not moves:
-                return "LOSS"
+                return 0.0, True
 
-            # Policy chooses a move
-            move = self.policy.choose(state, moves)
+            move = self.rng.choice(moves)
+            s = sim.next_state(s, move)
 
-            # Apply move
-            state = self.simulator.apply(state, move)
-
-        # If we hit max depth without terminal resolution, treat as loss
-        return "LOSS"
+        # If we hit max depth, treat as non-terminal loss
+        return 0.0, True
