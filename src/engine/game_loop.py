@@ -15,6 +15,7 @@ from time import sleep
 from src.engine.state import State, Move
 from src.engine.simulator import Simulator
 from src.engine.agent import BaseAgent
+from src.engine.agent_greedy import GreedyHeuristicAgent
 
 
 # ---------------------------------------------------------------------
@@ -42,10 +43,11 @@ def render_move(move: Move) -> None:
 # Game loop
 # ---------------------------------------------------------------------
 
-def play_with_agent(agent, simulator=None, delay=0.2, step=False, quiet=False):
+def play_with_agent(agent, simulator=None, delay=0.2, step=False, quiet=False, max_moves=200):
     sim = simulator or Simulator()
     state = State.new_game()
     moves_taken = 0
+    log = open("debug_game_log.txt", "w", encoding="utf-8")
 
     while not sim.is_terminal(state):
         if not quiet:
@@ -54,8 +56,10 @@ def play_with_agent(agent, simulator=None, delay=0.2, step=False, quiet=False):
         legal = sim.legal_moves(state)
         if not legal:
             break
-
+        # print("Choosing move...")   # heartbeat
         move = agent.choose_move(state, legal)
+        # print("Move chosen:", move)  # confirmation
+
         if move is None:
             break
 
@@ -65,7 +69,36 @@ def play_with_agent(agent, simulator=None, delay=0.2, step=False, quiet=False):
         state = sim.next_state(state, move)
         moves_taken += 1
 
-        # No sleeping in quiet mode
+        # ---------------------------------------------------------
+        # Debug snapshot every 10 moves  ← THIS IS “AMONG”, NOT “WITHIN”
+        # ---------------------------------------------------------
+        if moves_taken % 10 == 0:
+            print(f"\n--- Move {moves_taken} ---")
+            print(f"Chosen move: {move.pretty() if hasattr(move, 'pretty') else move}")
+
+            try:
+                value = agent.value_fn.evaluate(state)
+                print(f"Heuristic score: {value:.3f}")
+                print(f"Reveal stagnation: {state.reveal_stagnation}")
+                print(f"Foundation stagnation: {state.foundation_stagnation}")
+                print(f"Waste cycle count: {state.waste_cycle_count}")
+
+            except Exception as e:
+                print("Heuristic error:", e)
+                raise
+
+            try:
+                board = state.pretty()
+                print(board)
+                log.write(board + "\n\n")
+            except AttributeError:
+                print(state)
+
+        if moves_taken >= max_moves:
+            print(f"Reached max_moves={max_moves}, treating as loss / terminal.")
+            break
+
+        # No sleeping in quiet mode, to speed up batch runs
         if not quiet:
             if step:
                 input()
@@ -80,13 +113,14 @@ def play_with_agent(agent, simulator=None, delay=0.2, step=False, quiet=False):
 
     print(f"Game finished. Moves: {moves_taken}, Win: {win}, Reward: {reward}")
 
+    log.close()
     return win
 
 
 # ---------------------------------------------------------------------
 # Simple CLI entry point
 # ---------------------------------------------------------------------
-
+"""
 def main() -> None:
     from src.engine.mcts_alpha import AlphaMCTS, AlphaMCTSAgent, HeuristicPriorPolicy
     from src.engine.value import HeuristicValueFunction, DEFAULT_WEIGHTS
@@ -113,6 +147,21 @@ def main() -> None:
         print(f"Completed game {i}. Total wins so far: {wins}/{i}\n")
 
     print(f"Final win rate: {wins}/{games}")
+"""
+
+
+def main():
+    sim = Simulator()
+    agent = GreedyHeuristicAgent(simulator=sim)
+
+    games = 20
+    wins = 0
+    for i in range(games):
+        print(f"Starting game {i+1}...")
+        win = play_with_agent(agent, simulator=sim, quiet=True)
+        if win:
+            wins += 1
+        print(f"Completed game {i+1}. Total wins so far: {wins}/{games}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,72 @@
+Foundations: ♠:--  ♥:--  ♦:--  ♣:--
+Waste: 6♦    Stock: 17 cards
+
+Tableau:
+1: K♦
+2: XX 6♣
+3: XX XX J♥
+4: XX XX XX 5♣ 4♦
+5: XX XX XX 7♠
+6: XX XX XX XX XX 3♥ 2♣
+7: XX XX XX XX XX XX 2♦ A♠
+
+Foundations: ♠:A♠  ♥:--  ♦:--  ♣:--
+Waste: 7♦    Stock: 15 cards
+
+Tableau:
+1: K♦ Q♠ J♥ 10♣ 9♦ 8♠
+2: XX 6♣
+3: Q♣
+4: 2♥
+5: XX XX XX 7♠ 6♦ 5♣ 4♦
+6: XX XX XX XX XX 3♥ 2♣
+7: XX XX XX XX XX XX 2♦
+
+Foundations: ♠:A♠  ♥:--  ♦:--  ♣:--
+Waste: 5♦    Stock: 14 cards
+
+Tableau:
+1: K♦ Q♠ J♥ 10♣ 9♦ 8♠ 7♦ 6♣ 5♥ 4♣ 3♥ 2♣ A♦
+2: K♥ Q♣
+3: 
+4: 2♥ A♣
+5: XX XX XX 7♠ 6♦ 5♣ 4♦
+6: 6♠
+7: XX XX XX XX XX XX 2♦
+
+Foundations: ♠:A♠  ♥:--  ♦:2♦  ♣:--
+Waste: 5♦    Stock: 14 cards
+
+Tableau:
+1: K♥ Q♣
+2: 
+3: K♦ Q♠ J♥ 10♣ 9♦ 8♠ 7♦ 6♣ 5♥ 4♣ 3♥ 2♣
+4: 2♥ A♣
+5: XX XX XX 7♠ 6♦ 5♣ 4♦
+6: 6♠
+7: XX XX XX XX XX 6♥
+
+Foundations: ♠:A♠  ♥:--  ♦:2♦  ♣:A♣
+Waste: 5♦    Stock: 14 cards
+
+Tableau:
+1: 
+2: K♥ Q♣
+3: K♦ Q♠ J♥ 10♣ 9♦ 8♠ 7♦ 6♣ 5♥ 4♣ 3♥ 2♣
+4: 2♥
+5: XX XX XX 7♠ 6♦ 5♣ 4♦
+6: 6♠
+7: XX XX XX XX XX 6♥
+
+Foundations: ♠:A♠  ♥:--  ♦:2♦  ♣:2♣
+Waste: 5♦    Stock: 14 cards
+
+Tableau:
+1: K♥ Q♣
+2: 
+3: K♦ Q♠ J♥ 10♣ 9♦ 8♠ 7♦ 6♣ 5♥ 4♣ 3♥
+4: 2♥
+5: XX XX XX 7♠ 6♦ 5♣ 4♦
+6: 6♠
+7: XX XX XX XX XX 6♥
+

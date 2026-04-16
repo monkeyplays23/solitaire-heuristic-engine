@@ -24,6 +24,7 @@ from src.engine.state import State, Move
 from src.engine.simulator import Simulator
 from src.engine.value import ValueFunction
 from src.engine.policy import Policy
+import time
 
 
 # ---------------------------------------------------------------------
@@ -42,10 +43,6 @@ class PriorPolicy:
 
 
 class HeuristicPriorPolicy(PriorPolicy):
-    """
-    Default prior policy: uses a Policy to score moves, then softmaxes.
-    """
-
     def __init__(self, policy: Policy):
         self.policy = policy
 
@@ -53,14 +50,10 @@ class HeuristicPriorPolicy(PriorPolicy):
         if not moves:
             return {}
 
-        # Score each move using the policy's choose() logic
         scores = []
         for move in moves:
-            # Temporarily evaluate move by applying it
-            # (policy.choose() is not a scoring function, so we approximate)
             scores.append(1.0)
 
-        # Softmax
         total = sum(scores)
         return {m: s / total for m, s in zip(moves, scores)}
 
@@ -99,20 +92,13 @@ class AlphaNode:
 # ---------------------------------------------------------------------
 
 class AlphaMCTS:
-    """
-    AlphaZero-style MCTS:
-    - PUCT exploration
-    - value bootstrap
-    - no rollouts
-    """
-
     def __init__(
         self,
         prior_policy: PriorPolicy,
         value_fn: ValueFunction,
         simulator: Simulator | None = None,
         c_puct: float = 1.4,
-        iterations: int = 200,
+        iterations: int = 50,  # was 200
     ):
         self.prior_policy = prior_policy
         self.value_fn = value_fn
@@ -158,18 +144,18 @@ class AlphaMCTS:
         if not moves:
             return None
 
-        # Initialize root
         self.root = AlphaNode(state=state, prior=1.0)
 
-        # Expand root
         priors = self.prior_policy.priors(state, moves)
         self.root.expand(moves, priors, self.simulator)
 
-        # Run simulations
-        for _ in range(self.iterations):
+        start = time.time()
+        for i in range(self.iterations):
+            if time.time() - start > 1.0:  # 1 second cap per decision
+                # print(f"MCTS early stop at {i} iterations")  # optional
+                break
             self._simulate(self.root)
 
-        # Choose move with highest visit count
         best_move = max(
             self.root.children.items(),
             key=lambda kv: kv[1].visits,

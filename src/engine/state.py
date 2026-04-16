@@ -4,7 +4,7 @@ state.py
 Defines the core Klondike Solitaire state representation:
 cards, piles, tableau, foundations, and legal move generation.
 
-This module contains no heuristic logic; it is purely mechanical.
+Now fully instrumented for heuristic evaluation.
 """
 
 from __future__ import annotations
@@ -27,6 +27,16 @@ class Card:
     def color(self) -> str:
         return "red" if self.suit in ["♥", "♦"] else "black"
 
+    @property
+    def rank_str(self) -> str:
+        mapping = {
+            1: "A",
+            11: "J",
+            12: "Q",
+            13: "K",
+        }
+        return mapping.get(self.rank, str(self.rank))
+
 
 @dataclass
 class Deal:
@@ -48,14 +58,13 @@ class Move:
 
 
 # ---------------------------------------------------------------------
-# State
+# State (FULLY INSTRUMENTED)
 # ---------------------------------------------------------------------
 
 class State:
     """
     Represents a full Klondike game state, including tableau, stock, waste,
-    and foundations. Provides legal move generation and state transition
-    helpers.
+    and foundations. Now fully instrumented for heuristic evaluation.
     """
 
     def __init__(self, deal: Deal):
@@ -64,15 +73,86 @@ class State:
         self.waste = deal.waste
         self.foundations = deal.foundations
 
-    # -----------------------------------------------------------------
-    # New Game
-    # -----------------------------------------------------------------
+        # -------------------------------------------------------------
+        # Instrumentation fields
+        # -------------------------------------------------------------
+        self.last_move_revealed = False
+        self.last_move_to_foundation = None
 
+        self.waste_cycle_count = 0
+        self.last_waste_top = None
+
+        self.foundation_stagnation = 0
+        self.last_foundation_totals = self._foundation_total()
+
+        self.reveal_stagnation = 0
+        self.last_face_down_total = self._face_down_total()
+
+        self.move_counter = 0
+
+    # -------------------------------------------------------------
+    # Instrumentation helpers
+    # -------------------------------------------------------------
+    def _foundation_total(self) -> int:
+        return sum(len(p) for p in self.foundations.values())
+
+    def _face_down_total(self) -> int:
+        return sum(1 for pile in self.tableau for c in pile if not c.face_up)
+
+    def _update_instrumentation(self, before: "State", move: Move):
+        """Compare before/after and update heuristic signals."""
+        self.move_counter += 1
+
+        # -----------------------------
+        # 1. Reveal detection
+        # -----------------------------
+        before_down = before._face_down_total()
+        after_down = self._face_down_total()
+
+        if after_down < before_down:
+            self.last_move_revealed = True
+            self.reveal_stagnation = 0
+        else:
+            self.last_move_revealed = False
+            self.reveal_stagnation += 1
+
+        # -----------------------------
+        # 2. Foundation progress
+        # -----------------------------
+        before_f = before._foundation_total()
+        after_f = self._foundation_total()
+
+        if after_f > before_f:
+            # detect which card moved
+            for suit, pile in self.foundations.items():
+                if len(pile) > len(before.foundations[suit]):
+                    self.last_move_to_foundation = pile[-1]
+                    break
+            self.foundation_stagnation = 0
+        else:
+            self.last_move_to_foundation = None
+            self.foundation_stagnation += 1
+
+        # -----------------------------
+        # 3. Waste cycle detection
+        # -----------------------------
+        before_top = before.waste[-1] if before.waste else None
+        after_top = self.waste[-1] if self.waste else None
+
+        if after_top == before_top and move.kind in ("recycle_waste", "stock_to_waste"):
+            self.waste_cycle_count += 1
+        else:
+            self.waste_cycle_count = 0
+
+        self.last_waste_top = after_top
+
+    # -------------------------------------------------------------
+    # New Game
+    # -------------------------------------------------------------
     @classmethod
     def new_game(cls, seed=None):
         rng = random.Random(seed)
 
-        # ----- 1. Build full 52-card deck -----
         suits = ["♠", "♥", "♦", "♣"]
         deck = [Card(rank=r, suit=s, face_up=False)
                 for s in suits
@@ -80,59 +160,62 @@ class State:
 
         rng.shuffle(deck)
 
-        # ----- 2. Deal tableau piles (1..7 cards) -----
         tableau = []
         index = 0
         for pile_size in range(1, 8):
             pile = deck[index:index + pile_size]
             index += pile_size
 
-            # flip only the top card
             pile = [Card(c.rank, c.suit, face_up=False) for c in pile]
             pile[-1] = Card(pile[-1].rank, pile[-1].suit, face_up=True)
 
             tableau.append(pile)
 
-        # ----- 3. Remaining cards become stock -----
-        stock = deck[index:]
-        stock = [Card(c.rank, c.suit, face_up=False) for c in stock]
-
-        # ----- 4. Empty waste + foundations -----
+        stock = [Card(c.rank, c.suit, face_up=False) for c in deck[index:]]
         waste = []
         foundations = {"♠": [], "♥": [], "♦": [], "♣": []}
 
         return cls(Deal(tableau, stock, waste, foundations))
 
-    # -----------------------------------------------------------------
+    # -------------------------------------------------------------
     # Copy
-    # -----------------------------------------------------------------
-
+    # -------------------------------------------------------------
     def copy(self) -> "State":
-        deal = Deal(
+        new = State(Deal(
             tableau=[pile[:] for pile in self.tableau],
             stock=self.stock[:],
             waste=self.waste[:],
             foundations={s: p[:] for s, p in self.foundations.items()},
-        )
-        return State(deal)
+        ))
 
-    # -----------------------------------------------------------------
+        # copy instrumentation
+        new.last_move_revealed = self.last_move_revealed
+        new.last_move_to_foundation = self.last_move_to_foundation
+        new.waste_cycle_count = self.waste_cycle_count
+        new.last_waste_top = self.last_waste_top
+        new.foundation_stagnation = self.foundation_stagnation
+        new.last_foundation_totals = self.last_foundation_totals
+        new.reveal_stagnation = self.reveal_stagnation
+        new.last_face_down_total = self.last_face_down_total
+        new.move_counter = self.move_counter
+
+        return new
+
+    # -------------------------------------------------------------
     # Win/Loss
-    # -----------------------------------------------------------------
-
+    # -------------------------------------------------------------
     def is_win(self) -> bool:
         return all(len(pile) == 13 for pile in self.foundations.values())
 
     def is_loss(self) -> bool:
-        return False  # real logic comes later
+        return False
 
-    # -----------------------------------------------------------------
+    # -------------------------------------------------------------
     # Legal Move Helpers
-    # -----------------------------------------------------------------
-
+    # -------------------------------------------------------------
     def _can_place_on_tableau(self, card: Card, pile: list[Card]) -> bool:
         if not pile:
-            return card.rank == 13  # only Kings on empty tableau
+            return card.rank == 13
         top = pile[-1]
         return (top.face_up
                 and top.color != card.color
@@ -141,80 +224,57 @@ class State:
     def _can_place_on_foundation(self, card: Card) -> bool:
         pile = self.foundations[card.suit]
         if not pile:
-            return card.rank == 1  # Ace
+            return card.rank == 1
         return pile[-1].rank + 1 == card.rank
 
-    # -----------------------------------------------------------------
+    # -------------------------------------------------------------
     # Legal Move Generation
-    # -----------------------------------------------------------------
-
+    # -------------------------------------------------------------
     def legal_moves(self) -> list["Move"]:
         moves = []
 
-        # ---------------------------------------------------------
-        # 1. Stock → Waste
-        # ---------------------------------------------------------
         if self.stock:
             moves.append(Move("stock_to_waste", None, None))
         elif self.waste:
             moves.append(Move("recycle_waste", None, None))
 
-        # ---------------------------------------------------------
-        # 2. Waste → Tableau / Foundation
-        # ---------------------------------------------------------
         if self.waste:
             card = self.waste[-1]
 
-            # waste → tableau
             for i, pile in enumerate(self.tableau):
                 if self._can_place_on_tableau(card, pile):
                     moves.append(Move("waste_to_tableau", None, (i, None)))
 
-            # waste → foundation
             if self._can_place_on_foundation(card):
-                moves.append(Move("waste_to_foundation", None, (card.suit,
-                                                                None)))
+                moves.append(Move("waste_to_foundation", None, (card.suit, None)))
 
-        # ---------------------------------------------------------
-        # 3. Tableau → Foundation
-        # ---------------------------------------------------------
         for i, pile in enumerate(self.tableau):
             if pile and pile[-1].face_up:
                 card = pile[-1]
                 if self._can_place_on_foundation(card):
-                    moves.append(Move("tableau_to_foundation", (i, -1),
-                                      (card.suit, None)))
+                    moves.append(Move("tableau_to_foundation", (i, -1), (card.suit, None)))
 
-        # ---------------------------------------------------------
-        # 4. Tableau → Tableau (moving stacks)
-        # ---------------------------------------------------------
         for i, src in enumerate(self.tableau):
             for idx, card in enumerate(src):
                 if not card.face_up:
-                    continue  # can't move face-down cards
-
+                    continue
                 stack = src[idx:]
-
                 for j, dst in enumerate(self.tableau):
                     if i == j:
                         continue
-
                     if self._can_place_on_tableau(stack[0], dst):
-                        moves.append(Move("tableau_to_tableau",
-                                          (i, idx), (j, None)))
+                        moves.append(Move("tableau_to_tableau", (i, idx), (j, None)))
 
         return moves
 
-    # -----------------------------------------------------------------
+    # -------------------------------------------------------------
     # Transition Helpers
-    # -----------------------------------------------------------------
-
+    # -------------------------------------------------------------
     def _move_tableau_to_tableau(self, src_pile, idx, dst_pile):
         stack = self.tableau[src_pile][idx:]
         del self.tableau[src_pile][idx:]
         self.tableau[dst_pile].extend(stack)
 
-        # flip new top card if needed
         if self.tableau[src_pile] and not self.tableau[src_pile][-1].face_up:
             c = self.tableau[src_pile][-1]
             self.tableau[src_pile][-1] = Card(c.rank, c.suit, True)
@@ -244,12 +304,13 @@ class State:
             c = self.waste.pop()
             self.stock.append(Card(c.rank, c.suit, False))
 
-    # -----------------------------------------------------------------
-    # Apply Move
-    # -----------------------------------------------------------------
-
+    # -------------------------------------------------------------
+    # Apply Move (instrumented)
+    # -------------------------------------------------------------
     def apply_move(self, move: "Move") -> "State":
+        before = self.copy()
         s = self.copy()
+
         kind = move.kind
 
         if kind == "stock_to_waste":
@@ -274,4 +335,42 @@ class State:
             dst_pile, _ = move.dst
             s._move_tableau_to_tableau(src_pile, idx, dst_pile)
 
+        # Update instrumentation
+        s._update_instrumentation(before, move)
+
         return s
+
+    # -------------------------------------------------------------
+    # Pretty Print
+    # -------------------------------------------------------------
+    def pretty(self) -> str:
+        """Return a simple ASCII representation of the Klondike state."""
+        def fmt(card):
+            if not card.face_up:
+                return "XX"
+            return f"{card.rank_str}{card.suit}"
+
+        f = self.foundations
+        foundations_str = (
+            f"♠:{fmt(f['♠'][-1]) if f['♠'] else '--'}  "
+            f"♥:{fmt(f['♥'][-1]) if f['♥'] else '--'}  "
+            f"♦:{fmt(f['♦'][-1]) if f['♦'] else '--'}  "
+            f"♣:{fmt(f['♣'][-1]) if f['♣'] else '--'}"
+        )
+
+        waste_str = fmt(self.waste[-1]) if self.waste else "--"
+        stock_str = f"{len(self.stock)} cards"
+
+        tableau_lines = []
+        for i, pile in enumerate(self.tableau):
+            cards = " ".join(fmt(c) for c in pile)
+            tableau_lines.append(f"{i+1}: {cards}")
+
+        tableau_str = "\n".join(tableau_lines)
+
+        return (
+            "Foundations: " + foundations_str + "\n"
+            "Waste: " + waste_str + "    "
+            "Stock: " + stock_str + "\n\n"
+            "Tableau:\n" + tableau_str
+        )
